@@ -191,6 +191,7 @@ export default async function CategoryPage({
               />
             ) : (
               <ProductGrid cardTitleAs="h2"
+                masonry
                 products={items}
                 pagination={{
                   page: pagination.page,

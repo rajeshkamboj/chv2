@@ -22,7 +22,7 @@ export const apiEndpoints = {
     products: (slug: string) =>
       `/categories/${encodeURIComponent(slug)}/products`,
   },
-  search: "/search",
+  search: "/indexed-search",
   homepageSections: "/homepage-sections",
   collections: {
     list: "/v1/collections",

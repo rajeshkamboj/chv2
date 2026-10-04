@@ -1,7 +1,7 @@
 .card {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   overflow: hidden;
 }
 
@@ -27,6 +27,12 @@
   height: 100%;
   object-fit: cover;
   object-position: center top;
+}
+
+/* Keep the complete product artwork visible in catalogue/search cards. */
+.containImage {
+  object-fit: contain;
+  object-position: center;
 }
 
 .artworkPreview .media { aspect-ratio: 1; background-color: var(--ch-color-surface); }

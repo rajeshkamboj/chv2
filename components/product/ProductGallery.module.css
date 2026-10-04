@@ -23,6 +23,7 @@
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
+  max-height: 76vh;
   padding: 0;
   cursor: zoom-in;
   background: none;
@@ -55,7 +56,9 @@
 }
 
 .artImage {
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  background-color: var(--ch-color-surface);
 }
 
 .monogram {

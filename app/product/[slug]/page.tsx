@@ -11,7 +11,7 @@ import {
 } from "@/components/product";
 import { JsonLd } from "@/components/seo";
 import { Badge, Icon } from "@/components/ui";
-import { SITE } from "@/lib/constants";
+import { SHOW_PRODUCT_SOCIAL_PROOF, SITE } from "@/lib/constants";
 import { routes } from "@/lib/routes";
 import {
   breadcrumbJsonLd,
@@ -198,6 +198,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div>
                 <p className={styles.kicker}>{kicker}</p>
                 <h1 className={styles.title}>{product.title}</h1>
+                {SHOW_PRODUCT_SOCIAL_PROOF && product.ratingCount > 0 && product.salesCount > 0 && (
                 <p className={styles.meta}>
                   <span
                     className={styles.rating}
@@ -210,6 +211,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {formatCompact(product.salesCount)} sales
                   </span>
                 </p>
+                )}
               </div>
               <div className={styles.wishlist}>
                 <WishlistButton

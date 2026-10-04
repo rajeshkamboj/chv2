@@ -4,17 +4,10 @@ import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import { cacheTags, REVALIDATE_SECONDS } from "@/lib/cache";
 import {
-  apiCategorySlug,
-  categoryFromApi,
-  facetValuesFromCategories,
   paginatedFromApi,
   productFromApi,
 } from "@/lib/creative-hatti/adapters";
-import type {
-  ChApiCategory,
-  ChApiEnvelope,
-  ChApiProductCard,
-} from "@/lib/creative-hatti/types";
+import type { ChApiSearchResult } from "@/lib/creative-hatti/types";
 import type {
   Product,
   SearchFacet,
@@ -24,6 +17,7 @@ import type {
   SearchSortKey,
 } from "@/lib/types";
 import { normalizePaginationParams, paginateItems } from "@/lib/utils";
+import { searchRequestParams, searchFacetsFromApi } from "@/lib/creative-hatti/search";
 
 export interface SearchService {
   searchProducts(params: SearchParams): Promise<SearchResult<Product>>;
@@ -220,40 +214,13 @@ class ApiSearchService implements SearchService {
   async searchProducts(params: SearchParams): Promise<SearchResult<Product>> {
     const { page, pageSize } = normalizePaginationParams(params);
     const filters = params.filters ?? {};
-    const category = filters.categorySlugs?.[0] ?? filters.groups?.[0];
-    const free =
-      filters.availability === "free"
-        ? true
-        : filters.groups?.includes("freebies")
-          ? true
-          : undefined;
-
-    const [result, categoryResult] = await Promise.all([
-      apiFetch<ChApiEnvelope<ChApiProductCard[]>>(apiEndpoints.products.list, {
-        searchParams: {
-          page,
-          per_page: pageSize,
-          category: category ? apiCategorySlug(category) : undefined,
-          free,
-          orderby:
-            params.sort === "oldest" || params.sort === "newest"
-              ? "date"
-              : undefined,
-          order: params.sort === "oldest" ? "asc" : "desc",
-        },
-        revalidate: REVALIDATE_SECONDS.search,
-        tags: [cacheTags.search],
-      }),
-      apiFetch<ChApiEnvelope<ChApiCategory[]>>(
-        apiEndpoints.categories.list,
-        {
-          revalidate: REVALIDATE_SECONDS.catalog,
-          tags: [cacheTags.categories],
-        },
-      ),
-    ]);
+    const result = await apiFetch<ChApiSearchResult>(apiEndpoints.search, {
+      searchParams: searchRequestParams({ ...params, page, pageSize }),
+      revalidate: REVALIDATE_SECONDS.search,
+      tags: [cacheTags.search],
+      timeoutMs: 10_000,
+    });
     const paginated = paginatedFromApi(result, productFromApi);
-    const categories = categoryResult.data.map(categoryFromApi);
 
     return {
       items: paginated.items,
@@ -261,14 +228,8 @@ class ApiSearchService implements SearchService {
       query: params.query,
       sort: params.sort ?? "relevance",
       appliedFilters: filters,
-      facets: [
-        {
-          key: "category",
-          label: "Category",
-          values: facetValuesFromCategories(categories),
-        },
-        { key: "fileType", label: "File type", values: [] },
-      ],
+      facets: searchFacetsFromApi(result.facets),
+      tookMs: result.took_ms,
     };
   }
 }
@@ -277,7 +238,8 @@ let cached: SearchService | null = null;
 
 export function getSearchService(): SearchService {
   cached ??=
-    process.env.USE_MOCK_API !== "true" && process.env.CH_API_URL
+    process.env.USE_MOCK_API === "false" ||
+    (process.env.USE_MOCK_API !== "true" && process.env.CH_API_URL)
       ? new ApiSearchService()
       : new MockSearchService();
   return cached;

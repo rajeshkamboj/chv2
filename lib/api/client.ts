@@ -37,6 +37,8 @@ export interface ApiFetchOptions {
   revalidate?: number | false;
   /** Next.js cache tags for on-demand revalidation. */
   tags?: string[];
+  /** Bound upstream latency for interactive reads such as catalogue search. */
+  timeoutMs?: number;
 }
 
 function resolveBaseUrl(): string {
@@ -74,6 +76,7 @@ export async function apiFetch<TResponse>(
     method: options.method ?? "GET",
     headers: { "Content-Type": "application/json" },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.timeoutMs === undefined ? undefined : AbortSignal.timeout(options.timeoutMs),
     next:
       options.revalidate === undefined && options.tags === undefined
         ? undefined

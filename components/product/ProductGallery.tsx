@@ -152,6 +152,11 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
           ref={stageRef}
           type="button"
           className={styles.stage}
+          style={
+            current.width && current.height
+              ? { aspectRatio: `${current.width} / ${current.height}` }
+              : undefined
+          }
           onClick={() => setLightbox(true)}
           aria-haspopup="dialog"
           aria-label={`Enlarge preview ${index + 1} of ${count}`}

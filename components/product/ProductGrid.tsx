@@ -20,6 +20,7 @@ export interface ProductGridEmpty {
 export interface ProductGridProps {
   products: Product[];
   artworkPreview?: boolean;
+  masonry?: boolean;
   className?: string;
   /** Total catalogue count for the "N products" line. Omit to hide. */
   totalItems?: number;
@@ -42,6 +43,7 @@ export function ProductGrid({
   empty = DEFAULT_EMPTY,
   cardTitleAs,
   artworkPreview = false,
+  masonry = false,
 }: ProductGridProps) {
   return (
     <div className={cn(styles.wrapper, className)}>
@@ -57,7 +59,7 @@ export function ProductGrid({
           action={empty.action}
         />
       ) : (
-        <ul className={styles.grid}>
+        <ul className={cn(styles.grid, masonry && styles.masonry)}>
           {products.map((product) => (
             <li key={product.id} className={styles.cell}>
               <ProductCard product={product} titleAs={cardTitleAs} artworkPreview={artworkPreview} />

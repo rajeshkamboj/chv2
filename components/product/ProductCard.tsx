@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Badge, Card } from "@/components/ui";
 import { routes } from "@/lib/routes";
 import { categoryDisplayName } from "@/lib/taxonomy";
+import { SHOW_PRODUCT_SOCIAL_PROOF } from "@/lib/constants";
 import type { Product, ProductKind } from "@/lib/types";
 import {
   cn,
@@ -71,6 +72,11 @@ export function ProductCard({
         <Link
           href={href}
           className={styles.media}
+          style={
+            !artworkPreview && cover?.width && cover.height
+              ? { aspectRatio: `${cover.width} / ${cover.height}` }
+              : undefined
+          }
           aria-label={product.title}
           tabIndex={-1}
         >
@@ -84,7 +90,7 @@ export function ProductCard({
                 ? "(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 300px"
                 : "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw"}
               decorative
-              className={styles.image}
+              className={cn(styles.image, styles.containImage)}
             />
           ) : (
             <PlaceholderArt product={product} />
@@ -132,18 +138,29 @@ export function ProductCard({
             {product.isNew ? "New arrival." : ""}
           </span>
         )}
-        <p className={styles.meta}>
-          <span
-            className={styles.rating}
-            aria-label={`Rated ${product.ratingAverage} out of 5`}
-          >
-            ★ {product.ratingAverage.toFixed(1)}
-          </span>
-          <span className={styles.counts}>
-            ({formatCompact(product.ratingCount)}) ·{" "}
-            {formatCompact(product.salesCount)} sales
-          </span>
-        </p>
+        {SHOW_PRODUCT_SOCIAL_PROOF &&
+          (product.ratingCount > 0 || product.salesCount > 0) && (
+            <p className={styles.meta}>
+              {product.ratingCount > 0 && (
+                <>
+                  <span
+                    className={styles.rating}
+                    aria-label={`Rated ${product.ratingAverage} out of 5`}
+                  >
+                    ★ {product.ratingAverage.toFixed(1)}
+                  </span>
+                  <span className={styles.counts}>
+                    ({formatCompact(product.ratingCount)})
+                  </span>
+                </>
+              )}
+              {product.salesCount > 0 && (
+                <span className={styles.counts}>
+                  {formatCompact(product.salesCount)} sales
+                </span>
+              )}
+            </p>
+          )}
         <p className={styles.priceRow}>
           {product.isFree ? (
             <span className={styles.free}>Free download</span>

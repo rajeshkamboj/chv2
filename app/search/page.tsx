@@ -125,6 +125,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               />
             ) : (
               <ProductGrid cardTitleAs="h2"
+                masonry
                 products={items}
                 pagination={{
                   page: pagination.page,

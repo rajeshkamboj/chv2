@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:seasonal": "node --test tests/seasonal-searches.test.mjs"
+    "test:seasonal": "node --test tests/seasonal-searches.test.mjs",
+    "test:search": "node --test tests/search.test.mjs",
+    "test:search:integration": "node --test tests/search-integration.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",

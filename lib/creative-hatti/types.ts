@@ -11,6 +11,11 @@ export interface ChApiPagination {
   total_pages: number;
 }
 
+export interface ChApiSearchResult extends ChApiEnvelope<ChApiProductCard[]> {
+  facets: import("@/lib/types").SearchFacet[];
+  took_ms: number;
+}
+
 export interface ChApiMoney {
   type?: "single" | "variable";
   amount: number;

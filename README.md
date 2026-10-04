@@ -210,6 +210,17 @@ npm run dev                  # http://localhost:3000
 
 ## Project structure
 
+### Indexed catalogue search
+
+Real search uses the dedicated WordPress/EDD index in
+[`wordpress/creative-hatti-search`](wordpress/creative-hatti-search/README.md).
+Install and activate that plugin, build the catalogue with `wp ch-search reindex`,
+then set server-only `CH_API_URL` and `USE_MOCK_API=false`. The existing Next.js
+search, category and collection listings call `/indexed-search` through their
+search service, forwarding queries, multiselect filters, sorting and pagination.
+Only the current result page reaches the browser. See the plugin guide for the
+API contract, Laragon CLI commands, index synchronization and verification.
+
 ```
 app/                  layout, homepage, search, category + collection listings,
                       product + cart + checkout pages, auth + account pages

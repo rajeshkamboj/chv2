@@ -118,6 +118,28 @@ function imageFromApi(image: ChApiImage | null | undefined): ProductImage | null
   };
 }
 
+function imageVariant(url: string): { stem: string; variant: "small" | "large" | null } {
+  const filename = decodeURIComponent(url.split(/[?#]/, 1)[0]?.split("/").pop() ?? "");
+  const match = filename.match(/^(.*?)-(small|large)(\.[^.]+)$/i);
+  return match
+    ? { stem: `${match[1].toLowerCase()}${match[3].toLowerCase()}`, variant: match[2].toLowerCase() as "small" | "large" }
+    : { stem: filename.toLowerCase(), variant: null };
+}
+
+/** Prefer explicitly watermarked large files on product pages; retain small
+ * files only when no corresponding large variant is present. */
+function productGalleryImages(images: ProductImage[]): ProductImage[] {
+  const largeStems = new Set(
+    images
+      .filter((image) => imageVariant(image.url).variant === "large")
+      .map((image) => imageVariant(image.url).stem),
+  );
+  return images.filter((image) => {
+    const { stem, variant } = imageVariant(image.url);
+    return variant !== "small" || !largeStems.has(stem);
+  });
+}
+
 function stripHtml(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
   const stripped = value
@@ -179,10 +201,10 @@ export function productFromApi(apiProduct: ChApiProductDetail | ChApiProductCard
   const slugs = categorySlugs(apiProduct.categories);
   const group = groupFromCategories(slugs);
   const featured = Boolean(apiProduct.featured);
-  const images = [
+  const images = productGalleryImages([
     imageFromApi(detail.featured_image ?? apiProduct.image),
     ...(detail.gallery ?? []).map(imageFromApi),
-  ].filter((image): image is ProductImage => Boolean(image));
+  ].filter((image): image is ProductImage => Boolean(image)));
   const fileTypes = splitList(apiProduct.file_type);
   const tags = (detail.tags ?? []).map((tag) => tag.name);
   const createdAt = detail.date ?? new Date(0).toISOString();

@@ -10,12 +10,26 @@
 
 .grid {
   display: grid;
+  align-items: start;
   gap: var(--ch-space-4);
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .cell {
   min-width: 0;
+}
+
+.masonry {
+  display: block;
+  columns: 2;
+  column-gap: var(--ch-space-4);
+}
+
+.masonry .cell {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: var(--ch-space-4);
+  break-inside: avoid;
 }
 
 .pagination {
@@ -29,10 +43,23 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--ch-space-5);
   }
+
+  .masonry {
+    columns: 3;
+    column-gap: var(--ch-space-5);
+  }
+
+  .masonry .cell {
+    margin-bottom: var(--ch-space-5);
+  }
 }
 
 @media (min-width: 1024px) {
   .grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .masonry {
+    columns: 4;
   }
 }

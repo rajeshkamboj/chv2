@@ -164,6 +164,7 @@ export default async function CollectionPage({
               />
             ) : (
               <ProductGrid cardTitleAs="h2"
+                masonry
                 products={items}
                 pagination={{
                   page: pagination.page,

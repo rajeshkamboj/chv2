@@ -22,6 +22,9 @@ import type {
 const API_TO_FRONTEND_CATEGORY: Record<string, string> = {
   "character-bundles": "character-bundle",
   "miscellaneous-character-bundles": "miscellaneous",
+  // WordPress has a second "Miscellaneous" term under Freebies. Keep its
+  // storefront slug distinct from the Character Bundle subcategory.
+  miscellaneous: "freebies-miscellaneous",
 };
 
 const FRONTEND_TO_API_CATEGORY: Record<string, string> = Object.fromEntries(
@@ -118,25 +121,35 @@ function imageFromApi(image: ChApiImage | null | undefined): ProductImage | null
   };
 }
 
-function imageVariant(url: string): { stem: string; variant: "small" | "large" | null } {
+function imageVariant(url: string): {
+  stem: string;
+  variant: "small" | "medium" | "large" | null;
+} {
   const filename = decodeURIComponent(url.split(/[?#]/, 1)[0]?.split("/").pop() ?? "");
-  const match = filename.match(/^(.*?)-(small|large)(\.[^.]+)$/i);
+  const match = filename.match(
+    /^(.*?)(?:-set)?-thumbnail-(small|medium|large)(\.[^.]+)$/i,
+  ) ?? filename.match(/^(.*?)-(small|large)(\.[^.]+)$/i);
   return match
-    ? { stem: `${match[1].toLowerCase()}${match[3].toLowerCase()}`, variant: match[2].toLowerCase() as "small" | "large" }
+    ? {
+        stem: `${match[1].toLowerCase()}${match[3].toLowerCase()}`,
+        variant: match[2].toLowerCase() as "small" | "medium" | "large",
+      }
     : { stem: filename.toLowerCase(), variant: null };
 }
 
-/** Prefer explicitly watermarked large files on product pages; retain small
- * files only when no corresponding large variant is present. */
+/** Keep the highest named thumbnail variant for each matching image stem. */
 function productGalleryImages(images: ProductImage[]): ProductImage[] {
-  const largeStems = new Set(
-    images
-      .filter((image) => imageVariant(image.url).variant === "large")
-      .map((image) => imageVariant(image.url).stem),
-  );
+  const bestVariantByStem = new Map<string, number>();
+  const variantRank = { small: 1, medium: 2, large: 3 } as const;
+  for (const image of images) {
+    const { stem, variant } = imageVariant(image.url);
+    if (!variant) continue;
+    const rank = variantRank[variant];
+    bestVariantByStem.set(stem, Math.max(bestVariantByStem.get(stem) ?? 0, rank));
+  }
   return images.filter((image) => {
     const { stem, variant } = imageVariant(image.url);
-    return variant !== "small" || !largeStems.has(stem);
+    return !variant || variantRank[variant] === bestVariantByStem.get(stem);
   });
 }
 
@@ -160,6 +173,23 @@ function decodeEntities(value: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
     .replace(/&nbsp;/g, " ");
+}
+
+export function seoFromApi(value: {
+  seo?: { title?: string | null; description?: string | null; canonical_url?: string | null };
+  meta_title?: string | null;
+  meta_description?: string | null;
+  canonical_url?: string | null;
+}): Product["seo"] {
+  const title = value.seo?.title ?? value.meta_title;
+  const description = value.seo?.description ?? value.meta_description;
+  const canonicalUrl = value.seo?.canonical_url ?? value.canonical_url;
+  const seo = {
+    ...(title?.trim() ? { title: decodeEntities(title.trim()) } : {}),
+    ...(description?.trim() ? { description: decodeEntities(description.trim()) } : {}),
+    ...(canonicalUrl?.trim() ? { canonicalUrl: canonicalUrl.trim() } : {}),
+  };
+  return Object.keys(seo).length ? seo : undefined;
 }
 
 function categorySlugs(categories: ChApiTerm[] | undefined): Slug[] {
@@ -217,6 +247,7 @@ export function productFromApi(apiProduct: ChApiProductDetail | ChApiProductCard
     title: decodeEntities(apiProduct.title),
     shortDescription: stripHtml(detail.short_description),
     description: stripHtml(detail.description),
+    seo: seoFromApi(apiProduct),
     price: {
       amount: moneyAmount(apiProduct.price.amount),
       currency: apiProduct.price.currency,
@@ -260,6 +291,7 @@ export function categoryFromApi(category: ChApiCategory): Category {
     slug: frontendCategorySlug(category.slug),
     name: decodeEntities(category.name),
     description: stripHtml(category.description),
+    seo: seoFromApi(category),
     imageUrl:
       category.image_url || category.image?.url
         ? normalizeWordPressMediaUrl(category.image_url ?? category.image?.url ?? "")

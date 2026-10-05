@@ -15,6 +15,7 @@ export const apiEndpoints = {
     detail: (slug: string) => `/products/slug/${encodeURIComponent(slug)}`,
     related: (slug: string) =>
       `/products/slug/${encodeURIComponent(slug)}/related`,
+    sitemap: "/products/sitemap",
   },
   categories: {
     list: "/categories",

@@ -11,6 +11,7 @@ import type {
   ChApiEnvelope,
   ChApiProductCard,
   ChApiProductDetail,
+  ChApiSitemapBatch,
 } from "@/lib/creative-hatti/types";
 import type {
   Paginated,
@@ -45,6 +46,10 @@ export interface ProductService {
   listFeaturedProducts(limit?: number): Promise<Product[]>;
   listBestsellers(limit?: number): Promise<Product[]>;
   listNewArrivals(limit?: number): Promise<Product[]>;
+  getSitemapBatch(page: number, pageSize: number): Promise<{
+    total: number;
+    items: Array<{ slug: string; updatedAt?: string; canonicalUrl?: string }>;
+  }>;
 }
 
 /* ------------------------------ Mock ------------------------------ */
@@ -62,6 +67,19 @@ const SORT_FNS: Record<ProductSortKey, (a: Product, b: Product) => number> = {
 };
 
 class MockProductService implements ProductService {
+  async getSitemapBatch(page: number, pageSize: number) {
+    const active = products.filter((product) => product.status === "active");
+    const start = (page - 1) * pageSize;
+    return {
+      total: active.length,
+      items: active.slice(start, start + pageSize).map((product) => ({
+        slug: product.slug,
+        updatedAt: product.updatedAt,
+        canonicalUrl: product.seo?.canonicalUrl,
+      })),
+    };
+  }
+
   async listProducts(
     params: ProductListParams = {},
   ): Promise<Paginated<Product>> {
@@ -140,6 +158,25 @@ class MockProductService implements ProductService {
 /* ------------------------------ API ------------------------------ */
 
 class ApiProductService implements ProductService {
+  async getSitemapBatch(page: number, pageSize: number) {
+    const result = await apiFetch<ChApiEnvelope<ChApiSitemapBatch>>(
+      apiEndpoints.products.sitemap,
+      {
+        searchParams: { page, per_page: pageSize },
+        revalidate: REVALIDATE_SECONDS.catalog,
+        tags: [cacheTags.products],
+      },
+    );
+    return {
+      total: result.data.total,
+      items: result.data.items.map((item) => ({
+        slug: item.slug,
+        updatedAt: item.modified,
+        canonicalUrl: item.canonical_url ?? undefined,
+      })),
+    };
+  }
+
   async listProducts(params: ProductListParams = {}): Promise<Paginated<Product>> {
     const { page, pageSize } = normalizePaginationParams(params);
     const result = await apiFetch<ChApiEnvelope<ChApiProductCard[]>>(
@@ -171,7 +208,7 @@ class ApiProductService implements ProductService {
           tags: [cacheTags.product(slug)],
         },
       );
-      return productFromApi(result.data);
+    return productFromApi(result.data);
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;

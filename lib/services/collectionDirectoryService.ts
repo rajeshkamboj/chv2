@@ -4,7 +4,6 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import { cacheTags, REVALIDATE_SECONDS } from "@/lib/cache";
 import { collectionGridQuery, parseCollectionCards } from "@/lib/creative-hatti/collections";
 import { normalizeWordPressMediaUrl } from "@/lib/creative-hatti/media";
-import { getProductService } from "./productService";
 import { getCategoryService } from "./categoryService";
 import { routes } from "@/lib/routes";
 import { getSearchService } from "./searchService";
@@ -26,8 +25,40 @@ export interface CollectionDirectoryService {
 }
 interface WordPressPage { slug: string; content: { rendered: string } }
 interface WordPressMedia { id: number; source_url: string; alt_text: string; media_details?: { width?: number; height?: number } }
-interface WordPressDownload { slug: string }
 const cache = { revalidate: REVALIDATE_SECONDS.catalog, tags: [cacheTags.categories] };
+const COUNT_CONCURRENCY = 4;
+const MIN_COLLECTION_PRODUCT_COUNT = 10;
+const COLLECTION_SEARCH_ALIASES: Record<string, string[]> = {
+  "international-yoga-day": ["Yoga Day"],
+  janmashtami: ["Janmashtami"],
+  "krishna-janmashtami": ["Janmashtami"],
+  // "international-nurses-day": ["Nurse Day", "Nurse"],
+  "happy-mothers-day": ["Mother Day"],
+  "mothers-day-graphics": ["Mother Day"],
+  "ggs-prakash-divas": ["Guru Granth Sahib"],
+  "granth-sahib": ["Guru Granth Sahib"],
+  "instagram-banner": ["Instagram"],
+  "instagram-banners": ["Instagram"],
+  "sales-discount": ["Discount Bundles"],
+};
+
+function collectionSearchQueries(
+  slug: string,
+  title: string,
+  pageQuery?: string,
+): string[] {
+  const curatedQuery = collections.find((entry) => entry.slug === slug)?.query;
+  const aliases = COLLECTION_SEARCH_ALIASES[slug] ??
+    COLLECTION_SEARCH_ALIASES[title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")] ??
+    [];
+  return [...new Set([...
+    aliases,
+    curatedQuery,
+    pageQuery,
+    title,
+    slug.replace(/-/g, " "),
+  ].map((query) => query?.trim()).filter((query): query is string => Boolean(query)))];
+}
 
 class MockCollectionDirectoryService implements CollectionDirectoryService {
   async listEntries() { return collections.map((c) => ({ slug: c.slug, title: c.title, image: c.coverImage, query: c.query })); }
@@ -70,12 +101,41 @@ class WordPressCollectionDirectoryService implements CollectionDirectoryService 
       media.push(...await Promise.all(ids.slice(offset, offset + 6).map((id) => this.image(id))));
     }
     const categories = await getCategoryService().listCategories();
-    return cards.map((card) => {
+    const collectionCards = cards.filter(
+      (card) => !categories.some((category) => category.slug === card.slug),
+    );
+    const counts = new Map<string, number | null>();
+    for (let offset = 0; offset < collectionCards.length; offset += COUNT_CONCURRENCY) {
+      const batch = collectionCards.slice(offset, offset + COUNT_CONCURRENCY);
+      const results = await Promise.all(batch.map(async (card) => {
+        try {
+          const entry = await this.getEntry(card.slug);
+          const candidates = collectionSearchQueries(card.slug, card.title, entry?.query);
+          for (const query of candidates) {
+            const result = await getSearchService().searchProducts({ query, page: 1, pageSize: 1 });
+            if (result.pagination.totalItems > 0) {
+              return [card.slug, result.pagination.totalItems] as const;
+            }
+          }
+          return [card.slug, 0] as const;
+        } catch {
+          // A missing collection query should not prevent the directory rendering.
+          return [card.slug, null] as const;
+        }
+      }));
+      for (const [slug, count] of results) counts.set(slug, count);
+    }
+
+    return cards.flatMap((card) => {
       const item = media.find((m) => m.id === card.mediaId);
       const category = categories.find((c) => c.slug === card.slug);
-      return { slug: card.slug, title: card.title,
-        countLabel: category ? `${category.productCount.toLocaleString("en-IN")} Items` : card.countLabel,
-        href: category ? routes.category(category.slug) : routes.collection(card.slug), image: item ? this.productImage(item) : undefined };
+      const total = category?.productCount ?? counts.get(card.slug);
+      if (total !== undefined && total !== null && total < MIN_COLLECTION_PRODUCT_COUNT) return [];
+      return [{ slug: card.slug, title: card.title,
+        countLabel: total === undefined || total === null
+          ? undefined
+          : `${total.toLocaleString("en-IN")} Items`,
+        href: category ? routes.category(category.slug) : routes.collection(card.slug), image: item ? this.productImage(item) : undefined }];
     });
   }
   async getEntry(slug: string): Promise<CollectionDirectoryEntry | null> {
@@ -84,22 +144,23 @@ class WordPressCollectionDirectoryService implements CollectionDirectoryService 
     const pages = await apiFetch<WordPressPage[]>(apiEndpoints.wordpress.pages, {
       ...cache, wordpress: true, searchParams: { slug, per_page: 1, _fields: "slug,content" },
     });
-    return { ...entry, query: collectionGridQuery(pages[0]?.content.rendered ?? "") ?? entry.title };
+    const pageQuery = collectionGridQuery(pages[0]?.content.rendered ?? "");
+    const query = collectionSearchQueries(slug, entry.title, pageQuery)[0] ?? entry.title;
+    return { ...entry, query };
   }
   async listProducts(slug: string, page: number) {
     const entry = await this.getEntry(slug);
     if (!entry?.query) return { products: [], total: 0, totalPages: 0 };
-    // The CH API has no keyword parameter. Use the existing public WP REST search
-    // for matching slugs, then hydrate only this page through the product accessor.
-    let total = 0;
-    let totalPages = 0;
-    const result = await apiFetch<WordPressDownload[]>(apiEndpoints.wordpress.downloads, {
-      ...cache, wordpress: true,
-      onPagination: (items, pages) => { total = items; totalPages = pages; },
-      searchParams: { search: entry.query, page, per_page: 24, _fields: "slug" },
+    const result = await getSearchService().searchProducts({
+      query: entry.query,
+      page,
+      pageSize: 24,
     });
-    const products = await Promise.all(result.map((p) => getProductService().getProductBySlug(p.slug)));
-    return { products: products.filter((p): p is Product => p !== null), total, totalPages };
+    return {
+      products: result.items,
+      total: result.pagination.totalItems,
+      totalPages: result.pagination.totalPages,
+    };
   }
 }
 let cached: CollectionDirectoryService | null = null;

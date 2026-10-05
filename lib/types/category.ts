@@ -5,6 +5,12 @@ export interface Category {
   slug: Slug;
   name: string;
   description?: string;
+  /** Optional SEO overrides migrated from the legacy CMS. */
+  seo?: {
+    title?: string;
+    description?: string;
+    canonicalUrl?: string;
+  };
   /** Optional editorial/cover image. */
   imageUrl?: string;
   /** Null for top-level categories. */

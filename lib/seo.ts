@@ -16,12 +16,20 @@ export function productCanonical(product: Pick<Product, "slug">): string {
   return absoluteUrl(routes.product(product.slug));
 }
 
+/** Prefer a migrated Yoast override; otherwise use the Next.js route. */
+export function productSeoCanonical(
+  product: Pick<Product, "slug" | "seo">,
+): string {
+  return product.seo?.canonicalUrl || productCanonical(product);
+}
+
 /**
  * Meta-description fallback chain: editorial short description first,
  * then a description composed from real fields (category, formats,
  * price). Never empty, never invented.
  */
 export function productMetaDescription(product: Product): string {
+  if (product.seo?.description) return product.seo.description;
   if (product.shortDescription) return product.shortDescription;
   if (product.description) return product.description;
   const formats = product.fileTypes.slice(0, 4).join("/");
@@ -33,6 +41,26 @@ export function productMetaDescription(product: Product): string {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+export function productMetaTitle(product: Product): string {
+  return product.seo?.title || product.title;
+}
+
+export function categoryMetaTitle(category: Category): string {
+  return category.seo?.title || category.name;
+}
+
+export function categoryMetaDescription(category: Category): string {
+  return (
+    category.seo?.description ||
+    category.description ||
+    `${category.name} — Indian vectors, characters and creative assets on ${SITE.name}.`
+  );
+}
+
+export function categoryCanonical(category: Pick<Category, "slug" | "seo">): string {
+  return category.seo?.canonicalUrl || absoluteUrl(routes.category(category.slug));
 }
 
 /** Breadcrumb trail items for JSON-LD (paths resolve via `absoluteUrl`). */
@@ -72,7 +100,7 @@ export function productJsonLd(
     "@type": "Product",
     name: product.title,
     description: productMetaDescription(product),
-    url: productCanonical(product),
+    url: productSeoCanonical(product),
     ...(images.length > 0 ? { image: images } : {}),
     ...(options.categoryName ? { category: options.categoryName } : {}),
     brand: { "@type": "Brand", name: SITE.name },
@@ -87,7 +115,7 @@ export function productJsonLd(
       : {}),
     offers: {
       "@type": "Offer",
-      url: productCanonical(product),
+      url: productSeoCanonical(product),
       priceCurrency: product.price.currency,
       price: (product.price.amount / 100).toFixed(2),
       itemCondition: "https://schema.org/NewCondition",

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import legacyProductRedirects from "./data/legacy-product-redirects.json";
 console.log(">>> CREATIVE HATTI NEXT CONFIG LOADED <<<");
 
 const nextConfig: NextConfig = {
@@ -61,8 +62,35 @@ images: {
     }
     return [{ source: "/:path*", headers: security }];
   },
+  async rewrites() {
+    return [
+      { source: "/sitemap/:id.xml", destination: "/sitemap/:id" },
+    ];
+  },
   async redirects() {
     return [
+      ...Object.entries(legacyProductRedirects).map(([oldSlug, newSlug]) => ({
+        source: `/product/${oldSlug}`,
+        destination: `/product/${newSlug}`,
+        permanent: true,
+      })),
+      ...Object.entries(legacyProductRedirects).map(([oldSlug, newSlug]) => ({
+        source: `/products/${oldSlug}`,
+        destination: `/product/${newSlug}`,
+        permanent: true,
+      })),
+      ...Object.entries(legacyProductRedirects).map(([oldSlug, newSlug]) => ({
+        source: `/downloads/${oldSlug}`,
+        destination: `/product/${newSlug}`,
+        permanent: true,
+      })),
+      // EDD's current WordPress permalink base is /downloads/:slug/.
+      // Preserve current slugs as well as the exact historical aliases above.
+      {
+        source: "/downloads/:slug",
+        destination: "/product/:slug",
+        permanent: true,
+      },
       // Canonical category URLs live at /category/[slug]; keep the legacy
       // plural prefix working for any shared/bookmarked links.
       {

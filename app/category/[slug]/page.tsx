@@ -13,7 +13,12 @@ import listingStyles from "@/components/search/ListingPage.module.css";
 import { PAGINATION, SITE } from "@/lib/constants";
 import { routes } from "@/lib/routes";
 import { popularSearches } from "@/lib/navigation";
-import { breadcrumbJsonLd } from "@/lib/seo";
+import {
+  breadcrumbJsonLd,
+  categoryCanonical,
+  categoryMetaDescription,
+  categoryMetaTitle,
+} from "@/lib/seo";
 import {
   buildListingHref,
   countActiveFilters,
@@ -48,20 +53,27 @@ export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams ?? Promise.resolve({})]);
   const category = await getCategoryService().getCategoryBySlug(slug);
   if (!category) return { title: "Category not found" };
-  const url = `${SITE.url}/category/${slug}`;
-  const description =
-    category.description ??
-    `${category.name} — Indian vectors, characters and creative assets on ${SITE.name}.`;
+  const url = categoryCanonical(category);
+  const description = categoryMetaDescription(category);
+  const title = categoryMetaTitle(category);
+  const hasListingState = Object.entries(query).some(([key, value]) => {
+    const entries = Array.isArray(value) ? value : [value];
+    return key === "page"
+      ? Number(entries[0]) > 1
+      : entries.some((entry) => Boolean(entry));
+  });
   return {
-    title: category.name,
+    title,
     description,
     alternates: { canonical: url },
+    ...(hasListingState ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
-      title: `${category.name} · ${SITE.name}`,
+      title: `${title} · ${SITE.name}`,
       description,
       url,
       siteName: SITE.name,
@@ -210,7 +222,7 @@ export default async function CategoryPage({
           ...(parent
             ? [{ name: parent.name, path: routes.category(parent.slug) }]
             : []),
-          { name: category.name },
+          { name: category.name, path: routes.category(category.slug) },
         ])}
       />
     </Container>

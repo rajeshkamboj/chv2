@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { SearchBar, type SearchBarCategory } from "@/components/search";
+import { SearchBar } from "@/components/search";
 import { Icon } from "@/components/ui";
 import { WISHLIST_COUNT_COOKIE } from "@/lib/constants";
+import { productNavigation } from "@/lib/navigation";
 import { routes } from "@/lib/routes";
-import { productGroups } from "@/lib/taxonomy";
+import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import styles from "./MobileMenu.module.css";
 
 export interface MobileMenuProps {
-  categories: SearchBarCategory[];
+  categories: Category[];
   popularSearches: string[];
   cartCount: number;
   className?: string;
@@ -27,11 +28,9 @@ function readWishlistCount(): number {
   return value === undefined ? 0 : Number(value);
 }
 
-const BROWSE_LINKS = [
-  { label: "New arrivals", href: routes.newArrivals() },
-  { label: "Popular", href: routes.popular() },
-  { label: "Free downloads", href: routes.freeDownloads() },
-];
+function destination(item: (typeof productNavigation)[number] | (typeof productNavigation)[number]["children"][number]) {
+  return "href" in item ? item.href : routes.category(item.slug);
+}
 
 /**
  * Mobile navigation drawer. Rendered inside the server header but fully
@@ -137,7 +136,7 @@ export function MobileMenu({
             <div className={styles.panelSearch}>
               <SearchBar
                 id="mobile-menu-search"
-                categories={categories}
+                categories={categories.map(({ name, slug }) => ({ name, slug }))}
                 popularSearches={popularSearches}
               />
             </div>
@@ -182,47 +181,31 @@ export function MobileMenu({
                   </li>
                 </ul>
               </section>
-              <section aria-label="Browse" className={styles.group}>
-                <p className={styles.groupTitle}>Browse</p>
-                <ul className={styles.links}>
-                  {BROWSE_LINKS.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className={styles.link}
-                        onClick={close}
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-              {productGroups.map((group) => (
+              {productNavigation.map((group) => (
                 <section
-                  key={group.slug}
-                  aria-label={group.name}
+                  key={group.label}
+                  aria-label={group.label}
                   className={styles.group}
                 >
                   <p className={styles.groupTitle}>
                     <Link
-                      href={routes.category(group.slug)}
+                      href={destination(group)}
                       className={styles.groupLink}
                       onClick={close}
                     >
-                      {group.name}
+                      {group.label}
                     </Link>
                   </p>
-                  {group.subcategories.length > 0 && (
+                  {group.children.length > 0 && (
                     <ul className={styles.links}>
-                      {group.subcategories.map((sub) => (
+                      {group.children.map((sub) => (
                         <li key={sub.slug}>
                           <Link
-                            href={routes.category(sub.slug)}
+                            href={destination(sub)}
                             className={styles.link}
                             onClick={close}
                           >
-                            {sub.name}
+                            {sub.label}
                             <Icon
                               name="chevron-right"
                               size={16}

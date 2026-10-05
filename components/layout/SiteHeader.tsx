@@ -40,7 +40,7 @@ export async function SiteHeader() {
       <div className={styles.main}>
         <div className={`ch-container ${styles.mainInner}`}>
           <MobileMenu
-            categories={navCategories}
+            categories={categories}
             popularSearches={popularSearches}
             cartCount={cart.itemCount}
             className={styles.mobileMenu}
@@ -73,12 +73,7 @@ export async function SiteHeader() {
           />
         </div>
       </div>
-      <PrimaryNav
-        categories={categories.filter(
-          (category) => category.parentId === null,
-        )}
-        className={styles.primaryNav}
-      />
+      <PrimaryNav className={styles.primaryNav} />
     </header>
   );
 }

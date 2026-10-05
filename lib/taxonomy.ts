@@ -1,15 +1,19 @@
 /**
- * Creative Hatti product taxonomy — SINGLE SOURCE OF TRUTH.
+ * Product taxonomy used by product grouping and mock catalogue fixtures.
  *
- * Mirrors the real Creative Hatti product navigation:
+ * This is intentionally separate from the full browsing navigation in
+ * `lib/navigation.ts`. It defines the product classification groups used by
+ * the catalogue model, not every live-site menu destination.
+ *
+ * Product groups:
  * - Vector Creatives (Flyers, Logo Design, Social Media, Website, T-Shirts)
  * - Character Bundle (Cultural, Festival & Events, Mythological, People,
  *   Profession, Miscellaneous)
  * - Freebies
  *
  * Rules:
- * - Category/group names live ONLY here. Components, services and data
- *   modules resolve names through these helpers — never duplicate strings.
+ * - Category/group names live here for product classification. Components,
+ *   services and data modules resolve these names through these helpers.
  * - `data/categories.ts` builds its records from `productGroups`.
  * - Homepage discovery tiles (`lib/homepage.ts`) are a separate discovery
  *   layer and intentionally do NOT reuse these names.

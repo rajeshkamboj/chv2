@@ -24,7 +24,7 @@ export const SHOW_PRODUCT_SOCIAL_PROOF = false;
 
 function readSiteUrl(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  return raw ? raw : "http://localhost:3000";
+  return raw ? raw : "https://www.creativehatti.com";
 }
 
 function readEnvInt(

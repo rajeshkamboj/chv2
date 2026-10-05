@@ -26,7 +26,32 @@ UI code continues to read catalogue data only through `@/lib/services`.
 - `/search` uses `GET /products` as the paginated browse/archive surface.
 - `/category/[slug]` uses backend category filtering through `GET /products?category=...`.
 - `/product/[slug]` uses `GET /products/slug/{slug}` for product detail, gallery, metadata, SEO, and Open Graph.
-- `/sitemap/1.xml` includes the latest 48 products from the catalogue API.
+- Yoast fields are exposed by the local Laragon API plugin on product detail
+  responses as `seo.title`, `seo.description`, and `seo.canonical_url`, and on
+  categories as the same fields when populated. Empty category SEO values
+  serialize as `{}`. The local database currently has no product canonical
+  values and no category Yoast term values, so storefront canonicals use the
+  Next.js route and category SEO returns an empty object until metadata is
+  populated.
+- Product sitemap contract: implement `GET /wp-json/ch/v1/products/sitemap?page=N&per_page=48`
+  as an active-product-only, stable paginated feed returning
+  the standard API success envelope:
+  `{ "success": true, "data": { "total": 44800, "items": [{ "slug": "...", "modified": "...", "canonical_url": null }] } }`.
+  The total must not be capped with the ordinary catalogue page limit. The
+  frontend requests a one-row batch for the total and then one bounded batch
+  per sitemap file. Sitemap chunk IDs are generated from that total and
+  robots.txt advertises Next.js's generated sitemap index at `/sitemap.xml`;
+  `/sitemap/0.xml` is the static/taxonomy chunk, not the index.
+- The Next.js service requests `/products/sitemap` and explicitly reads the
+  `{ success, data: { total, items } }` envelope; keep the plugin and frontend
+  on this single route and response shape.
+- The plugin implementation is applied to the separate local Laragon
+  `creative-hatti-api` plugin and passes local API smoke tests. It is not
+  checked into this workspace; deploy the plugin changes to production before
+  production can return the new SEO fields or full sitemap feed.
+- Product sitemap files are numbered chunks of 48 public products. The
+  generated `/sitemap.xml` index links to the static/taxonomy chunk and all
+  product chunks.
 - The homepage's character and featured-pack cards can be curated in WordPress
   through the separate `Creative Hatti Homepage Sections` plugin. Its
   `GET /homepage-sections` endpoint is read by `HomepageService`; disabled

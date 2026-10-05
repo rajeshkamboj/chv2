@@ -15,9 +15,10 @@ import { SHOW_PRODUCT_SOCIAL_PROOF, SITE } from "@/lib/constants";
 import { routes } from "@/lib/routes";
 import {
   breadcrumbJsonLd,
-  productCanonical,
   productJsonLd,
   productMetaDescription,
+  productMetaTitle,
+  productSeoCanonical,
 } from "@/lib/seo";
 import {
   getCollectionService,
@@ -66,14 +67,15 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = await getProductService().getProductBySlug(slug);
   if (!product) return { title: "Product not found" };
-  const url = productCanonical(product);
+  const url = productSeoCanonical(product);
   const description = productMetaDescription(product);
+  const title = productMetaTitle(product);
   return {
-    title: product.title,
+    title,
     description,
     alternates: { canonical: url },
     openGraph: {
-      title: `${product.title} · ${SITE.name}`,
+      title: `${title} · ${SITE.name}`,
       description,
       url,
       siteName: SITE.name,
@@ -155,7 +157,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           },
         ]
       : []),
-    { name: product.title },
+    { name: product.title, path: routes.product(product.slug) },
   ];
   const kicker = [
     KIND_LABELS[product.kind],

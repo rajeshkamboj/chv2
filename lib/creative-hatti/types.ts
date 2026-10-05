@@ -47,6 +47,11 @@ export interface ChApiProductCard {
   featured?: boolean;
   file_type?: string | null;
   file_size?: string | null;
+  /** SEO overrides can be included by detail and paginated sitemap feeds. */
+  seo?: ChApiSeo;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  canonical_url?: string | null;
 }
 
 export interface ChApiVariablePrice {
@@ -69,6 +74,17 @@ export interface ChApiProductDetail extends ChApiProductCard {
   tags?: ChApiTerm[];
   compatible_with?: string | null;
   documentation?: boolean | string | null;
+  seo?: ChApiSeo;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  canonical_url?: string | null;
+}
+
+/** Yoast values exported by the WordPress API. Empty fields are omitted. */
+export interface ChApiSeo {
+  title?: string | null;
+  description?: string | null;
+  canonical_url?: string | null;
 }
 
 export interface ChApiCategory {
@@ -80,6 +96,21 @@ export interface ChApiCategory {
   parent?: number;
   image_url?: string;
   image?: ChApiImage | null;
+  seo?: ChApiSeo;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  canonical_url?: string | null;
+}
+
+export interface ChApiSitemapProduct {
+  slug: string;
+  modified?: string;
+  canonical_url?: string | null;
+}
+
+export interface ChApiSitemapBatch {
+  total: number;
+  items: ChApiSitemapProduct[];
 }
 
 export interface ChApiHomepageCharacter {

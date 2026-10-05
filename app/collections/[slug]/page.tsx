@@ -38,12 +38,23 @@ export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CollectionPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams ?? Promise.resolve({})]);
+  const hasListingState = Object.entries(query).some(([key, value]) => {
+    const entries = Array.isArray(value) ? value : [value];
+    return key === "page"
+      ? Number(entries[0]) > 1
+      : entries.some((entry) => Boolean(entry));
+  });
   const collection = await getCollectionService().getCollectionBySlug(slug);
   if (!collection) {
     const entry = await getCollectionDirectoryService().getEntry(slug);
-    return entry ? { title: entry.title, alternates: { canonical: `${SITE.url}${routes.collection(slug)}` } } : { title: "Collection not found" };
+    return entry ? {
+      title: entry.title,
+      alternates: { canonical: `${SITE.url}${routes.collection(slug)}` },
+      ...(hasListingState ? { robots: { index: false, follow: true } } : {}),
+    } : { title: "Collection not found" };
   }
   const url = `${SITE.url}/collections/${slug}`;
   const description = `${collection.title} — ${collection.tagline} Curated Indian creative assets on ${SITE.name}.`;
@@ -51,6 +62,7 @@ export async function generateMetadata({
     title: `${collection.title} Collection`,
     description,
     alternates: { canonical: url },
+    ...(hasListingState ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: `${collection.title} Collection · ${SITE.name}`,
       description,
@@ -63,9 +75,8 @@ export async function generateMetadata({
 
 /**
  * Topical collection listing (Diwali, Logo Templates, Bollywood, …).
- * Collections are discovery content, separate from the product taxonomy:
- * the slug constrains results via the collection query while every other
- * filter keeps working. Scales to thousands of collections — one route.
+ * Collection search terms are used directly so aliases and accepted search
+ * names resolve the same products as the collection directory counts.
  */
 export default async function CollectionPage({
   params,
@@ -84,7 +95,7 @@ export default async function CollectionPage({
   const basePath = `/collections/${slug}`;
   const listing = parseListingParams((await searchParams) ?? {});
   const input = toSearchParams(listing, PAGINATION.defaultPageSize);
-  input.filters = { ...input.filters, collection: slug };
+  input.query = [collection.query, input.query].filter(Boolean).join(" ");
 
   const [result, collections] = await Promise.all([
     getSearchService().searchProducts(input),
@@ -180,7 +191,7 @@ export default async function CollectionPage({
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: routes.home() },
-          { name: collection.title },
+          { name: collection.title, path: routes.collection(collection.slug) },
         ])}
       />
     </Container>

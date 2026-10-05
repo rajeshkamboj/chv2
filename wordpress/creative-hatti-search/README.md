@@ -21,6 +21,17 @@ C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe wordpress/creative-hatti-se
 C:\laragon\bin\php\php-8.3.33-Win32-vs16-x64\php.exe wordpress/creative-hatti-search/console.php --path=C:\laragon\www\creativehatti --url=http://creativehatti.test --command=status
 ```
 
+## SEO and sitemap data contract
+
+The product API should expose migrated Yoast overrides on detail records as
+`seo: { title, description, canonical_url }`, reading
+`_yoast_wpseo_title` and `_yoast_wpseo_metadesc`. Empty values should be
+omitted. Product list records may carry the optional canonical URL for the
+sitemap. The sitemap feed is `GET /wp-json/ch/v1/products/sitemap?page=N&per_page=48`
+and returns `{ total, items: [{ slug, modified, canonical_url }] }`; it must
+use stable ordering and the full published-product total, not the normal
+catalogue page cap.
+
 Index creation adds three prefixed InnoDB tables; it does not alter WordPress
 source tables. Build batches use ID keysets, 100 products and one transaction
 per batch. An interrupted initial build resumes from its last committed batch.

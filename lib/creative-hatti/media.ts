@@ -14,8 +14,8 @@ export function isLocalWordPressMediaUrl(value: string): boolean {
 
 function productionWordPressUrl(): URL {
   const configured =
-    process.env.NEXT_PUBLIC_WORDPRESS_URL ??
     process.env.WORDPRESS_URL ??
+    process.env.NEXT_PUBLIC_WORDPRESS_URL ??
     DEFAULT_PRODUCTION_WORDPRESS_URL;
 
   try {
@@ -37,6 +37,15 @@ export function normalizeWordPressMediaUrl(value: string): string {
   try {
     const url = new URL(value);
     if (!isLocalWordPressMediaUrl(value)) return value;
+    // Keep staging and local API media URLs intact in development. Only
+    // production builds translate local WordPress hosts to the configured
+    // production media origin. Local databases can reference generated
+    // WordPress size variants that were never created in the uploads folder;
+    // use the attachment original when that conventional suffix is present.
+    if (process.env.NODE_ENV !== "production") {
+      url.pathname = url.pathname.replace(/-\d+x\d+(\.[^./]+)$/i, "$1");
+      return url.toString();
+    }
     const production = productionWordPressUrl();
     url.protocol = production.protocol;
     url.hostname = production.hostname;

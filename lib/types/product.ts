@@ -47,6 +47,13 @@ export interface Product {
   shortDescription?: string;
   description?: string;
 
+  /** Existing WordPress/Yoast overrides, when the catalogue API provides them. */
+  seo?: {
+    title?: string;
+    description?: string;
+    canonicalUrl?: string;
+  };
+
   /** Base price (personal license) in minor units. */
   price: Money;
   /** Original price when on sale; absent otherwise. */
